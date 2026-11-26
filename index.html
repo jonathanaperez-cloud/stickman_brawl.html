@@ -46,7 +46,6 @@
             width: 100%;
             height: 100%;
         }
-        /* Barras de vida con retraso de daño */
         .health-bar-bg {
             background: rgba(15, 23, 42, 0.85);
             border: 2px solid #475569;
@@ -102,7 +101,6 @@
             transform: translateY(2px);
             border-bottom-width: 1px;
         }
-        /* Controles táctiles en pantalla */
         .touch-btn {
             background: rgba(30, 41, 59, 0.72);
             border: 2px solid rgba(148, 163, 184, 0.45);
@@ -117,4 +115,146 @@
         }
         .touch-btn:active {
             background: rgba(56, 189, 248, 0.6);
-            transform: scale(
+            transform: scale(0.92);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="arenaCanvas"></canvas>
+
+        <!-- HUD SUPERIOR DE COMBATE -->
+        <div id="hud" class="hidden absolute top-0 left-0 right-0 p-3 sm:p-5 pointer-events-none flex flex-col gap-2 z-10">
+            <div class="flex items-center justify-between gap-3 sm:gap-6">
+                <!-- JUGADOR 1 HUD -->
+                <div class="flex-1">
+                    <div class="flex justify-between items-end mb-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-cyan-400 text-sm sm:text-base tracking-wide">JUGADOR 1</span>
+                            <div id="p1-rounds" class="flex gap-1">
+                                <span class="w-3 h-3 rounded-full bg-slate-700 border border-slate-500"></span>
+                                <span class="w-3 h-3 rounded-full bg-slate-700 border border-slate-500"></span>
+                            </div>
+                        </div>
+                        <span id="p1-combo" class="arcade-font text-lg sm:text-2xl text-amber-400 opacity-0 transition-opacity">COMBO x2!</span>
+                    </div>
+                    <div class="health-bar-bg">
+                        <div id="p1-hp-delay" class="health-delay left-0" style="width: 100%;"></div>
+                        <div id="p1-hp-fill" class="health-fill left-0 bg-gradient-to-r from-cyan-500 to-blue-500" style="width: 100%;"></div>
+                    </div>
+                    <div class="energy-bar-bg">
+                        <div id="p1-energy-fill" class="energy-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- CENTRO: RELOJ Y RONDA -->
+                <div class="flex flex-col items-center justify-center px-2">
+                    <span id="round-label" class="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-300">RONDA 1</span>
+                    <div id="timer-display" class="arcade-font text-3xl sm:text-5xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] leading-none">99</div>
+                </div>
+
+                <!-- JUGADOR 2 / CPU HUD -->
+                <div class="flex-1">
+                    <div class="flex justify-between items-end mb-1">
+                        <span id="p2-combo" class="arcade-font text-lg sm:text-2xl text-amber-400 opacity-0 transition-opacity">COMBO x2!</span>
+                        <div class="flex items-center gap-2">
+                            <div id="p2-rounds" class="flex gap-1">
+                                <span class="w-3 h-3 rounded-full bg-slate-700 border border-slate-500"></span>
+                                <span class="w-3 h-3 rounded-full bg-slate-700 border border-slate-500"></span>
+                            </div>
+                            <span id="p2-name" class="font-extrabold text-rose-400 text-sm sm:text-base tracking-wide">CPU (NORMAL)</span>
+                        </div>
+                    </div>
+                    <div class="health-bar-bg">
+                        <div id="p2-hp-delay" class="health-delay right-0" style="width: 100%;"></div>
+                        <div id="p2-hp-fill" class="health-fill right-0 bg-gradient-to-l from-rose-500 to-red-600" style="width: 100%;"></div>
+                    </div>
+                    <div class="energy-bar-bg flex justify-end">
+                        <div id="p2-energy-fill" class="energy-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barra de controles rápidos superior -->
+            <div class="flex justify-between items-center text-[11px] text-slate-300/80 pointer-events-auto">
+                <div class="hidden md:flex gap-3 bg-slate-900/70 px-3 py-1 rounded-full border border-slate-700/70">
+                    <span><strong class="text-cyan-400">J1:</strong> <kbd class="bg-slate-800 px-1 rounded">A/D</kbd> Mov · <kbd class="bg-slate-800 px-1 rounded">W</kbd> Saltar · <kbd class="bg-slate-800 px-1 rounded">S</kbd> Escudo · <kbd class="bg-slate-800 px-1 rounded">Z/X/C</kbd> Ataques</span>
+                    <span><strong class="text-rose-400">J2:</strong> <kbd class="bg-slate-800 px-1 rounded">Flechas</kbd> Mov/Saltar/Escudo · <kbd class="bg-slate-800 px-1 rounded">J/K/L</kbd> Ataques</span>
+                </div>
+                <div class="flex gap-2 ml-auto">
+                    <button id="toggle-touch-btn" class="bg-slate-800/80 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-600 cursor-pointer">
+                        🎮 Táctil
+                    </button>
+                    <button id="mute-btn" class="bg-slate-800/80 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-600 cursor-pointer">
+                        🔊 Sonido
+                    </button>
+                    <button id="menu-btn" class="bg-rose-900/80 hover:bg-rose-800 text-xs px-2.5 py-1 rounded-lg border border-rose-700 cursor-pointer">
+                        Menú
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ANUNCIO CENTRAL -->
+        <div id="center-banner" class="hidden absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <h2 id="banner-text" class="arcade-font text-6xl sm:text-8xl text-amber-400 drop-shadow-[0_6px_20px_rgba(0,0,0,0.95)] tracking-wider transform scale-100 transition-transform">
+                ¡PELEA!
+            </h2>
+        </div>
+
+        <!-- CONTROLES TÁCTILES -->
+        <div id="touch-controls" class="hidden absolute bottom-3 left-3 right-3 flex justify-between items-end pointer-events-none z-20">
+            <div class="relative w-36 h-36 pointer-events-auto">
+                <button data-key="w" class="touch-btn w-11 h-11 absolute top-0 left-1/2 -translate-x-1/2">▲</button>
+                <button data-key="s" class="touch-btn w-11 h-11 absolute bottom-0 left-1/2 -translate-x-1/2 text-xs">🛡️S</button>
+                <button data-key="a" class="touch-btn w-11 h-11 absolute left-0 top-1/2 -translate-y-1/2">◀</button>
+                <button data-key="d" class="touch-btn w-11 h-11 absolute right-0 top-1/2 -translate-y-1/2">▶</button>
+            </div>
+            <div class="flex gap-2.5 items-end pointer-events-auto">
+                <button data-key="z" class="touch-btn w-14 h-14 text-sm border-cyan-400">PUÑO</button>
+                <button data-key="x" class="touch-btn w-14 h-14 text-sm border-emerald-400">PATADA</button>
+                <button data-key="c" class="touch-btn w-16 h-16 text-sm border-amber-400 text-amber-300">ESP</button>
+            </div>
+        </div>
+
+        <!-- PANTALLA DE TÍTULO Y CONFIGURACIÓN -->
+        <div id="title-screen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8 z-30 text-center">
+            <div class="mb-2 inline-block px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-bold tracking-widest uppercase">
+                Edición Arena 2D
+            </div>
+            <h1 class="arcade-font text-5xl sm:text-7xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-rose-500 drop-shadow-lg mb-2">
+                STICKMAN BRAWL
+            </h1>
+            <p class="text-slate-400 text-xs sm:text-sm max-w-md mb-6">
+                Combate al mejor de 3 rondas. Encadena golpes, bloquea ataques y desata tu onda de energía al 100%.
+            </p>
+
+            <!-- Selector de Modo y Escenario -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl mb-6">
+                <div class="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Modo de Juego</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="mode-cpu-btn" class="mode-opt py-2 px-3 rounded-xl font-bold text-sm bg-cyan-600 text-white border border-cyan-400 cursor-pointer">
+                            1P vs CPU
+                        </button>
+                        <button id="mode-2p-btn" class="mode-opt py-2 px-3 rounded-xl font-bold text-sm bg-slate-800 text-slate-300 border border-slate-700 cursor-pointer">
+                            2P Local
+                        </button>
+                    </div>
+
+                    <div id="difficulty-selector" class="mt-3">
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Dificultad de la IA</label>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button data-diff="easy" class="diff-opt py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 cursor-pointer">Fácil</button>
+                            <button data-diff="normal" class="diff-opt py-1.5 rounded-lg text-xs font-bold bg-amber-600 text-white border border-amber-400 cursor-pointer">Normal</button>
+                            <button data-diff="hard" class="diff-opt py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 cursor-pointer">Difícil</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4 flex flex-col justify-between">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Escenario</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="stage-dojo-btn" class="stage-opt py-2 px
